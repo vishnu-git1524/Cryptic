@@ -34,7 +34,7 @@ To conclude, here is a table that resume the encryption and the decryption of 't
 | :---                  |     :---:                                           |                   ---: |
 | Hello world !         | ßCï‰€å2µÄ£ËÅPð                                    | Hello world !          |
 
-# Other 📚
+# Other
 <p align="center">
   <img src="https://img.shields.io/badge/Written%20In-Python-blue?style=for-the-badge">
 </p>
