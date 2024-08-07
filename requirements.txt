@@ -1,4 +1,3 @@
 pyfiglet
 colorama
-discord_webhook
 pycryptodome
