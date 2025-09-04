@@ -1,183 +1,152 @@
-try:
-    from colorama import Fore, Style
-    from colorama.initialise import reset_all
-    from hashlib import sha256
-    from Crypto.Cipher import AES
-    from Crypto.Util import Padding
-    from urllib.request import Request
-    import pyfiglet
-    import hashlib
-    import argparse
-    import random
-    import timeit
-    import string
-    import sys
-    import os
-    import colorama
-except:
-    sys.exit(Fore.RED + "\n[-]" + Style.RESET_ALL + " Error - Missing requirements. Run 'pip install -r requirements.txt' and re-try.")
+import tkinter as tk
+from tkinter import filedialog, messagebox, ttk
+from hashlib import sha256
+from Crypto.Cipher import AES
+from Crypto.Util import Padding
+import random
+import string
+import os
 
-def banner():
-    try:
-        pfbanner = pyfiglet.figlet_format("                 Crypto", font="graffiti")
-        print(pfbanner)
-        print("                 Made with", Fore.RED, chr(9829), Style.RESET_ALL, "by Group-1")
-        print("               ***")
-    except pyfiglet.FontNotFound:
-        sys.exit(Fore.RED + "\n[-]" + Style.RESET_ALL + " Error - Banner error. Run 'sudo pip3 install --upgrade pyfiglet' and re-try.")
+def encrypt_file(pswd, iv, file):
+    key = sha256(pswd.encode()).digest()
+    with open(file, "rb") as f:
+        data = f.read()
 
-def menu():
-    print("\n\nMenu")
-    print("[1] Encrypt")
-    print("[2] Decrypt")
-    print("[3] Informations")
-    print("[4] Exit")
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    paddeddata = Padding.pad(data, 16)
+    encrypteddata = cipher.encrypt(paddeddata)
 
-def encryption():
-    def filencrypt(pswd, iv, file):
-        key = hashlib.sha256(pswd.encode()).digest()
+    # Ask the user to select a folder to save the encrypted file and IV
+    save_folder = filedialog.askdirectory(title="Select a folder to save the encrypted file")
+    if not save_folder:
+        messagebox.showerror("Error", "No folder selected. Encryption aborted.")
+        return
 
-        with open("AES_IV.txt", "w") as ivf:
-            ivf.write(f"Encryption of : {file}\n\n-----BEGIN AES INITIALIZATION VECTOR BLOCK-----\n{iv}\n-----END AES INITIALIZATION VECTOR BLOCK-----".replace("b'", "").replace("'", ""))
-
-        with open(file, "rb") as f:
-            data = f.read()
-
-        stime = timeit.default_timer()
-        
-        cipher = AES.new(key, AES.MODE_CBC, iv)
-        paddeddata = Padding.pad(data, 16)
-        encrypteddata = cipher.encrypt(paddeddata)
-        
-        with open(file, "wb") as ef:
-            ef.write(encrypteddata)
-
-        time = timeit.default_timer() - stime
-
-        print(Fore.GREEN + "\n[+]" + Style.RESET_ALL + " Encryption of the file " + Fore.GREEN + str(file) + Style.RESET_ALL + " complete in " + Fore.GREEN + str(round(time, 3)) + Style.RESET_ALL + " seconds!\n")
-        print("Don't forget the password you used for the encryption of this file!\nAlso a " + Fore.GREEN + "AES_IV.txt " + Style.RESET_ALL + "file has been created, it contains the initialization vector (IV) of the encryption. " + Fore.RED + "\nYou have to keep this file " + Style.RESET_ALL + "because you will need this IV for decrypt your file.")
-
-    file = input(Fore.YELLOW + "\nFile to encrypt : " + Style.RESET_ALL)
-
-    if "." in file:
-        pass
-    else:
-        sys.exit(Fore.RED + "\n[-]" + Style.RESET_ALL + " Error - Missing extension")
-
-    try:
-        with open(file, "rb"):
-            pass
-    except IOError:
-        sys.exit(Fore.RED + "\n[-]" + Style.RESET_ALL + f" Error - File not found. Make sure your file is in this path : {os.path.realpath(__file__).replace('filencrypt.py', '')}")
-
-    if os.path.getsize(file) > 62914560:
-        sys.exit(Fore.RED + "\n[-]" + Style.RESET_ALL + " Error - File too large. Max size is 60Mo to avoid crashes or errors.")
-    else:
-        pass
-
-    pswd = input(Fore.YELLOW + "Choose a strong password : " + Style.RESET_ALL)
-
-    def geniv(length):
-        str = string.ascii_uppercase + string.digits #+ string.punctuation
-        return "".join(random.choice(str) for i in range(length))
-
-    iv = geniv(16)
-                
-    filencrypt(pswd, iv.encode(), file)
-
-def decryption():
-    def filedecrypt(pswd, iv, file):
-        key = hashlib.sha256(pswd.encode()).digest()
-
-        with open(file, "rb") as f:
-            data = f.read()
-
-        stime = timeit.default_timer()
-
-        cipher = AES.new(key, AES.MODE_CBC, iv)
-        decrypteddata = cipher.decrypt(data)
-        unpaddeddata = Padding.unpad(decrypteddata, 16)
-
-        with open(file, "wb") as ef:
-            ef.write(unpaddeddata)
+    # Get the original file name without the directory
+    original_file_name = os.path.basename(file)
     
-        time = timeit.default_timer() - stime
+    # Save the encrypted file in the selected folder
+    encrypted_file_path = os.path.join(save_folder, original_file_name)
+    with open(encrypted_file_path, "wb") as ef:
+        ef.write(encrypteddata)
 
-        print(Fore.GREEN + "\n[+]" + Style.RESET_ALL + " Decryption of the file " + Fore.GREEN + str(file) + Style.RESET_ALL + " complete in " + Fore.GREEN + str(round(time, 3)) + Style.RESET_ALL)
-    
-    file = input(Fore.YELLOW + "\nFile to decrypt : " + Style.RESET_ALL)
+    # Save the IV in the selected folder
+    iv_file_path = os.path.join(save_folder, "AES_IV.txt")
+    with open(iv_file_path, "w") as ivf:
+        ivf.write(f"Encryption of: {original_file_name}\n\n-----BEGIN AES INITIALIZATION VECTOR BLOCK-----\n{iv.decode()}\n-----END AES INITIALIZATION VECTOR BLOCK-----")
 
-    if "." in file:
-        pass
-    else:
-        sys.exit(Fore.RED + "\n[-]" + Style.RESET_ALL + " Error - Missing extension")
+    messagebox.showinfo("Success", f"Encryption complete!\nFiles saved in: {save_folder}")
 
-    try:
-        with open(file, "rb"):
-            pass
-    except IOError:
-        sys.exit(Fore.RED + "\n[-]" + Style.RESET_ALL + " Error - File not found. Make sure your file is in this path : {os.path.realpath(__file__).replace('filencrypt.py', '')}")
+# The rest of the code remains unchanged
 
-    pswd = input(Fore.YELLOW + f"Password used to encrypt {file} : " + Style.RESET_ALL)
-    iv = input(Fore.YELLOW + f"IV used to encrypt {file} : " + Style.RESET_ALL)
+def decrypt_file(pswd, iv, file):
+    key = sha256(pswd.encode()).digest()
+    with open(file, "rb") as f:
+        data = f.read()
 
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    decrypteddata = cipher.decrypt(data)
+    unpaddeddata = Padding.unpad(decrypteddata, 16)
+
+    with open(file, "wb") as ef:
+        ef.write(unpaddeddata)
+
+    messagebox.showinfo("Success", f"Decryption complete!")
+
+def select_file():
+    file_path = filedialog.askopenfilename()
+    file_entry.delete(0, tk.END)
+    file_entry.insert(0, file_path)
+
+def encrypt():
+    file = file_entry.get()
+    pswd = password_entry.get()
+    if not file or not pswd:
+        messagebox.showerror("Error", "Please select a file and enter a password.")
+        return
+    iv = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(16))
+    encrypt_file(pswd, iv.encode(), file)
+
+def decrypt():
+    file = file_entry.get()
+    pswd = password_entry.get()
+    iv = iv_entry.get()
+    if not file or not pswd or not iv:
+        messagebox.showerror("Error", "Please select a file, enter a password, and enter the IV.")
+        return
     if len(iv) != 16:
-        sys.exit(Fore.RED + "\n[-]" + Style.RESET_ALL + f" Error - Incorrect length of initialization vector : {len(iv)} chars instead of 16.")
+        messagebox.showerror("Error", "IV must be 16 characters long.")
+        return
+    decrypt_file(pswd, iv.encode(), file)
 
-    filedecrypt(pswd, iv.encode(), file)
+def show_info():
+    info = (
+        "Cryptic (version 4.0) is a cryptography project started in 2021 "
+        "that encrypts and decrypts your files using AES-256. It works with a strong password "
+        "chosen by the user and a 16-byte initialization vector (IV) generated by the program. "
+        "Keep the IV secret, as you'll need it to decrypt your files."
+    )
+    messagebox.showinfo("Information", info)
 
-def about():
-    print(Fore.YELLOW + f"\n[>] Running file : {os.path.realpath(__file__)}" + Style.RESET_ALL)
-    print("\n[>] Presentation\nFilencrypt (currently in version 4.0) is a cryptography project started in 2021 that encrypts and decrypts your files of all types (js, txt, png...) in AES-256. Filencrypt works with a strong password chosen by the user and with a 16 byte initialization vector (IV) generated by the program, you must keep this IV secret and you will need it to decrypt your file. Note that a new IV is created for each encrypted file.")
-    print("\n[>] Security\nIs Filencrypt a secure project?\nFilencrypt uses AES-256-bit encryption with Cipher Block Chaining (CBC) mode. Although CBC Mode is less secure than XTS or GCM Modes, it is generally suitable for encrypting more or less sensitive files.\nSecurity also depends on the password you use, you should use a strong password with uppercase, lowercase, symbols and numbers.")
+# GUI setup
+root = tk.Tk()
+root.title("Cryptic")
+root.geometry("650x300")
+root.resizable(False, False)
 
-if sys.platform.startswith("linux"):
-    os.system("clear")
-elif sys.platform.startswith("win32"):
-    os.system("cls")
-else:
-    pass
+# Style configuration
+style = ttk.Style()
+style.configure("TLabel", font=("Segoe UI", 11))
+style.configure("TButton", font=("Segoe UI", 11), padding=5)
+style.configure("TEntry", font=("Segoe UI", 11), padding=5)
 
-colorama.init()
+# Main frame
+frame = ttk.Frame(root, padding=15)
+frame.pack(fill="both", expand=True)
 
-parser = argparse.ArgumentParser()
-parser.add_argument('-e', help="Encrypt a file", action="store_true")
-parser.add_argument('-d', help="Decrypt a file", action="store_true")
-parser.add_argument('-i', help="Informations", action="store_true")
-args = parser.parse_args()
+# Centering all columns and rows
+frame.columnconfigure(0, weight=1)
+frame.columnconfigure(1, weight=1)
+frame.columnconfigure(2, weight=1)
 
-banner()
+# Banner
+banner_label = ttk.Label(frame, text="Cryptic", font=("Segoe UI", 18, "bold"), foreground="#333")
+banner_label.grid(row=0, column=0, columnspan=3, pady=(0, 20), sticky="n")
 
-try:
-    if args.e:
-        encryption()
+# File selection
+file_label = ttk.Label(frame, text="File:")
+file_label.grid(row=1, column=0, sticky="e")
+file_entry = ttk.Entry(frame, width=30)
+file_entry.grid(row=1, column=1, padx=(0, 10))
+file_button = ttk.Button(frame, text="Browse", command=select_file)
+file_button.grid(row=1, column=2, sticky="w")
 
-    elif args.d:
-        decryption()
+# Password input
+password_label = ttk.Label(frame, text="Password:")
+password_label.grid(row=2, column=0, sticky="e", pady=(10, 0))
+password_entry = ttk.Entry(frame, show="*", width=30)
+password_entry.grid(row=2, column=1, columnspan=2, pady=(10, 20), sticky="w")
 
-    elif args.i:
-        about()
-        
-    else:
-        while True:
-            menu()
-            choice = input("Choice: ")
+# IV input
+iv_label = ttk.Label(frame, text="IV (for decryption):")
+iv_label.grid(row=3, column=0, sticky="e")
+iv_entry = ttk.Entry(frame, width=30)
+iv_entry.grid(row=3, column=1, columnspan=2, pady=(0, 20), sticky="w")
 
-            if choice == "1":
-                encryption()
+# Buttons
+button_frame = ttk.Frame(frame)
+button_frame.grid(row=4, column=0, columnspan=3, pady=10)
 
-            elif choice == "2":
-                decryption()
+encrypt_button = ttk.Button(button_frame, text="Encrypt", command=encrypt)
+encrypt_button.grid(row=0, column=0, padx=5)
 
-            elif choice == "3":
-                about()
+decrypt_button = ttk.Button(button_frame, text="Decrypt", command=decrypt)
+decrypt_button.grid(row=0, column=1, padx=5)
 
-            elif choice == "4":
-                print(Fore.GREEN + "\n[+] " + Style.RESET_ALL + "Exiting...")
-                break
+info_button = ttk.Button(button_frame, text="Info", command=show_info)
+info_button.grid(row=0, column=2, padx=5)
 
-            else:
-                print(Fore.RED + "\n[-] " + Style.RESET_ALL + "Error - You must reply '1', '2', '3', or '4'")
+exit_button = ttk.Button(button_frame, text="Exit", command=root.quit)
+exit_button.grid(row=0, column=3, padx=5)
 
-except KeyboardInterrupt:
-    sys.exit(Fore.RED + "\n[-]" + Style.RESET_ALL + " Error - Filencrypt has been interrupted by user")
+root.mainloop()
